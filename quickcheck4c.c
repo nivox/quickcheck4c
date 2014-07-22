@@ -1,3 +1,10 @@
+/********************************************************************
+ * Copyright (c) 2014, Andrea Zito
+ * All rights reserved.
+ *
+ * License: BSD3
+ ********************************************************************/
+
 #include "quickcheck4c.h"
 
 #include <stdint.h>

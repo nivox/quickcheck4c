@@ -1,3 +1,10 @@
+/********************************************************************
+ * Copyright (c) 2014, Andrea Zito
+ * All rights reserved.
+ *
+ * License: BSD3
+ ********************************************************************/
+
 #ifndef QUICKCHECK4C_C
 #define QUICKCHECK4C_C
 
