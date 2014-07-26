@@ -10,11 +10,7 @@
 #include <stdio.h>
 
 QCC_GenValue* myRangedGenInt10() {
-  QCC_GenValue *gv = QCC_genInt();
-  int *v = (int*)(gv->value);
-  *v *= *v >= 0 ? 1 : -1;
-  *v = (*v % 11) - 5;
-  return gv;
+  return QCC_genIntR(-5, 5);
 }
 
 
@@ -82,7 +78,7 @@ QCC_TestStatus sumEvenKindInt(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   int b = *QCC_getValue(vals, 1, int*);
 
   if (a % 2 == 0 && b % 2 == 0) QCC_label(stamp, "even");
-  if (a % 2 == 1 && b % 2 == 1) QCC_label(stamp, "odd");
+  if (a % 2 != 0 && b % 2 != 0) QCC_label(stamp, "odd");
 
   return QCC_imply(a % 2 == b % 2,  (a + b) % 2 == 0);
 }
@@ -90,7 +86,7 @@ QCC_TestStatus sumEvenKindInt(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
 QCC_TestStatus rangedIntGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   int a = *QCC_getValue(vals, 0, int*);
 
-  char *lbl = vals[0]->show(&a);
+  char *lbl = vals[0]->show(&a, vals[0]->n);
   QCC_label(stamp, lbl);
   free(lbl);
 
@@ -116,7 +112,7 @@ int main(int argc, char **argv) {
   QCC_testForAll(100, 1000, sumEvenInt, 2, QCC_genInt, QCC_genInt);
 
   printf("Testing int sum to even (same kind)\n");
-  QCC_testForAll(100, 1000, sumEvenKindInt, 2, QCC_genInt, QCC_genInt);
+  QCC_testForAll(1000, 10000, sumEvenKindInt, 2, QCC_genInt, QCC_genInt);
 
   printf("Testing ranged int generator\n");
   QCC_testForAll(100, 1000, rangedIntGen, 1, myRangedGenInt10);

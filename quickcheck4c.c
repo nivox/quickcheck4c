@@ -12,6 +12,24 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef void (*QCC_genRaw)(void *ptr);
+typedef void (*QCC_genRawR)(void *ptr, void *from, void *to);
+
+struct QCC_Stamp {
+  char *label;
+  int n;
+  struct QCC_Stamp *next;
+};
+
+typedef struct QCC_Result {
+  QCC_TestStatus status;
+  QCC_Stamp *stamps;
+  QCC_GenValue **arguments;
+  int argumentsN;
+} QCC_Result;
+
+enum QCC_deref_type { NONE, LONG, INT, FLOAT, DOUBLE, CHAR };
+
 void QCC_init(int seed) {
   if (seed) srandom(seed);
   else srandom(time(NULL));
@@ -20,28 +38,27 @@ void QCC_init(int seed) {
 /***********************************************************************
  *  Generators helper functions
  ***********************************************************************/
-enum QCC_deref_type { NONE, LONG, INT, FLOAT, DOUBLE, CHAR };
 static char* QCC_showSimpleValue(void *value, enum QCC_deref_type dt, int maxsize, const char *format) {
-  char *vc = malloc(sizeof(char) * maxsize+1);
+  char *vc = malloc(sizeof(char) * (maxsize+1));
 
   switch (dt) {
   case LONG:
-    snprintf(vc, maxsize, format, *(long*)value);
+    snprintf(vc, maxsize+1, format, *(long*)value);
     break;
   case INT:
-    snprintf(vc, maxsize, format, *(int*)value);
+    snprintf(vc, maxsize+1, format, *(int*)value);
     break;
   case FLOAT:
-    snprintf(vc, maxsize, format, *(float*)value);
+    snprintf(vc, maxsize+1, format, *(float*)value);
     break;
   case DOUBLE:
-    snprintf(vc, maxsize, format, *(double*)value);
+    snprintf(vc, maxsize+1, format, *(double*)value);
     break;
   case CHAR:
-    snprintf(vc, maxsize, format, *(char*)value);
+    snprintf(vc, maxsize+1, format, *(char*)value);
     break;
   default:
-    snprintf(vc, maxsize, format, *(int*)value);
+    snprintf(vc, maxsize+1, format, *(int*)value);
     break;
   }
   vc[maxsize]=0;
@@ -64,74 +81,122 @@ QCC_GenValue* QCC_initGenValue(void *value, int n, QCC_showValue show, QCC_freeV
  *  Generators implementations
  ***********************************************************************/
 
-static char* QCC_showLong(void *value) {
+static char* QCC_showLong(void *value, int len) {
   return QCC_showSimpleValue(value, LONG, 21, "%ld");
 }
 
-void QCC_genLongAt(long *l) {
-  *l = random() * (random() % 2 ? 1 : -1);
+void QCC_genLongAtR(long *l, long *from, long *to) {
+  long _from = *from;
+  long _to = *to;
+  unsigned long n = _to - _from;
+
+  if (n > RAND_MAX) {
+    _from = _from + n/2 - RAND_MAX/2;
+    _to = _from + n/2 + RAND_MAX/2;
+    n = _to - _from;
+  }
+  *l = (random() % n) + _from;
 }
 
-QCC_GenValue* QCC_genLong() {
+void QCC_genLongAt(long *l) {
+  long from = QCC_LONG_FROM;
+  long to = QCC_LONG_TO;
+  QCC_genLongAtR(l, &from, &to);
+}
+
+QCC_GenValue* QCC_genLongR(long from, long to) {
   long *v = malloc(sizeof(long));
-  QCC_genLongAt(v);
+  QCC_genLongAtR(v, &from, &to);
 
   return QCC_initGenValue(v, 1, QCC_showLong, QCC_freeSimpleValue);
 }
 
-static char* QCC_showInt(void *value) {
+QCC_GenValue* QCC_genLong() {
+  return QCC_genLongR(QCC_LONG_FROM, QCC_LONG_TO);
+}
+
+static char* QCC_showInt(void *value, int len) {
   return QCC_showSimpleValue(value, INT, 11, "%d");
 }
 
-void QCC_genIntAt(int *i) {
-  *i = (int) (random() % INT_MAX) * (random() % 2 ? 1 : -1);
+void QCC_genIntAtR(int *i, int *from, int *to) {
+  int n = *to - *from;
+  *i = (int) (random() % n) + *from;
 }
 
-QCC_GenValue* QCC_genInt() {
+void QCC_genIntAt(int *i) {
+  int from = QCC_INT_FROM;
+  int to = QCC_INT_TO;
+  QCC_genIntAtR(i, &from, &to);
+}
+
+QCC_GenValue* QCC_genIntR(int from, int to) {
   int *v = malloc(sizeof(int));
-  QCC_genIntAt(v);
+  QCC_genIntAtR(v, &from, &to);
 
   return QCC_initGenValue(v, 1, QCC_showInt, QCC_freeSimpleValue);
 }
 
-static char* QCC_showDouble(void *value) {
+QCC_GenValue* QCC_genInt(int from, int to) {
+  return QCC_genIntR(QCC_INT_FROM, QCC_INT_TO);
+}
+
+static char* QCC_showDouble(void *value, int len) {
   return QCC_showSimpleValue(value, DOUBLE, 50, "%.12e");
 }
 
-void QCC_genDoubleAt(double *d) {
-  *d = (double)random() / (double) RAND_MAX;
-  *d += (int) (random() % INT_MAX);
-  *d *= random() % 2 ? 1 : -1;
+void QCC_genDoubleAtR(double *d, double *from, double *to) {
+  double r = (double)random() / (double) RAND_MAX;
+  *d = *from + (*to - *from) * r;
 }
 
-QCC_GenValue* QCC_genDouble() {
+void QCC_genDoubleAt(double *d) {
+  double from = QCC_DOUBLE_FROM;
+  double to = QCC_DOUBLE_TO;
+  QCC_genDoubleAtR(d, &from, &to);
+}
+
+QCC_GenValue* QCC_genDoubleR(double from, double to) {
   double *v = malloc(sizeof(double));
-  QCC_genDoubleAt(v);
+  QCC_genDoubleAtR(v, &from, &to);
   return QCC_initGenValue(v, 1, QCC_showDouble, QCC_freeSimpleValue);
 }
 
-static char* QCC_showFloat(void *value) {
+QCC_GenValue* QCC_genDouble() {
+  return QCC_genDoubleR(QCC_DOUBLE_FROM, QCC_DOUBLE_TO);
+}
+
+static char* QCC_showFloat(void *value, int len) {
   return QCC_showSimpleValue(value, FLOAT, 50, "%.12e");
 }
 
-void QCC_genFloatAt(float *f) {
-  *f = (float)random() / (float) RAND_MAX;
-  *f += (int) (random() % INT_MAX);
-  *f *= random() % 2 ? 1 : -1;
+void QCC_genFloatAtR(float *f, float *from, float *to) {
+  float r = (float)random() / (float) RAND_MAX;
+  *f = *from + (*to - *from) * r;
 }
 
-QCC_GenValue* QCC_genFloat() {
+void QCC_genFloatAt(float *f) {
+  float from = QCC_FLOAT_FROM;
+  float to = QCC_FLOAT_TO;
+  QCC_genFloatAtR(f, &from, &to);
+}
+
+QCC_GenValue* QCC_genFloatR(float from, float to) {
   float *v = malloc(sizeof(float));
-  QCC_genFloatAt(v);
+  QCC_genFloatAtR(v, &from, &to);
 
   return QCC_initGenValue(v, 1, QCC_showFloat, QCC_freeSimpleValue);
 }
 
-static char* QCC_showBoolean(void *value) {
+QCC_GenValue* QCC_genFloat() {
+  return QCC_genFloatR(QCC_FLOAT_FROM, QCC_FLOAT_TO);
+}
+
+static char* QCC_showBoolean(void *value, int len) {
   QCC_Boolean *b = (QCC_Boolean *)value;
 
-  if (b) return "TRUE";
-  else return "FALSE";
+  if (*b) return strdup("TRUE");
+  else return strdup("FALSE");
 }
 
 void QCC_genBooleanAt(QCC_Boolean *b) {
@@ -146,8 +211,8 @@ QCC_GenValue* QCC_genBoolean() {
   return QCC_initGenValue(v, 1, QCC_showBoolean, QCC_freeSimpleValue);
 }
 
-static char* QCC_showChar(void *value) {
-  return QCC_showSimpleValue(value, CHAR, 1, "%c");
+static char* QCC_showChar(void *value, int len) {
+  return QCC_showSimpleValue(value, CHAR, 3, "'%c'");
 }
 
 void QCC_genCharAt(char *c) {
@@ -166,28 +231,156 @@ QCC_GenValue* QCC_genChar() {
  *  Array generators implementations
  ***********************************************************************/
 
-QCC_GenValue* QCC_genArrayOf(QCC_genRaw elemGen, size_t elemSize, QCC_showValue show, QCC_freeValue free) {
-  int n = (int) random() % 100;
-
+QCC_GenValue* QCC_genArrayOf(int len, QCC_genRaw elemGen, size_t elemSize, QCC_showValue show, QCC_freeValue free) {
+  int n = (int) random() % len;
   uint8_t *arr = malloc(n*elemSize);
 
   int p,i;
-  for(i=0, p=0; i<n; i++, p += elemSize) {
-    elemGen(arr+p);
-  }
+  for(i=0, p=0; i<n; i++, p += elemSize) elemGen(arr+p);
 
   return QCC_initGenValue(arr, n, show, free);
 }
 
-static char *QCC_showString(void *value) {
-  return QCC_showSimpleValue(value, NONE, 100, "%s");
+QCC_GenValue* QCC_genArrayOfR(int len, QCC_genRawR elemGen, void *from, void *to, size_t elemSize, QCC_showValue show, QCC_freeValue free) {
+  int n = (int) random() % len;
+  uint8_t *arr = malloc(n*elemSize);
+
+  int p,i;
+  for(i=0, p=0; i<n; i++, p += elemSize) elemGen(arr+p, from, to);
+
+  return QCC_initGenValue(arr, n, show, free);
 }
 
-QCC_GenValue* QCC_genString() {
-  QCC_GenValue *s = QCC_genArrayOf((QCC_genRaw) QCC_genCharAt, sizeof(char), QCC_showString, QCC_freeSimpleValue);
+static char *QCC_showString(void *value, int len) {
+  return QCC_showSimpleValue(value, NONE, len, "%s");
+}
+
+QCC_GenValue* QCC_genStringL(int len) {
+  QCC_GenValue *s = QCC_genArrayOf(len, (QCC_genRaw) QCC_genCharAt, sizeof(char), QCC_showString, QCC_freeSimpleValue);
   ((char *)s->value)[s->n-1] = '\0';
   return s;
 }
+
+QCC_GenValue* QCC_genString() {
+  return QCC_genStringL(50);
+}
+
+static char *QCC_showSimpleArray(void *value, size_t elemSize, QCC_showValue showValue, int len) {
+  char **valStr = malloc(sizeof(char *) * len);
+  int valStrLen = 0;
+  int i;
+  for (i=0; i<len; i++) {
+    valStr[i] = showValue(((uint8_t *)value) + (i*elemSize), 1);
+    valStrLen += strlen(valStr[i]);
+  }
+
+  int totStrLen = valStrLen + 2 + 2*len + 1;
+  char *str = malloc(sizeof(char) * totStrLen);
+  sprintf(str, "[");
+  int currLen = 1;
+  for (i=0; i<len; i++) {
+    if (i==0) {
+      sprintf(str + currLen, "%s", valStr[i]);
+    } else {
+      sprintf(str + currLen, ", %s", valStr[i]);
+      currLen += 2;
+    }
+    currLen += strlen(valStr[i]);
+    free(valStr[i]);
+  }
+  sprintf(str + currLen, "]");
+  free(valStr);
+  return str;
+}
+
+static char* QCC_showArrayLong(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(long), QCC_showLong, n);
+}
+
+QCC_GenValue* QCC_genArrayLongLR(int len, long from, long to) {
+  return QCC_genArrayOfR(len, (QCC_genRawR) QCC_genLongAtR, &from, &to, sizeof(long), QCC_showArrayLong, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayLongL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genLongAt, sizeof(long), QCC_showArrayLong, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayLong() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genLongAt, sizeof(long), QCC_showArrayLong, QCC_freeSimpleValue);
+}
+
+static char* QCC_showArrayInt(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(int), QCC_showInt, n);
+}
+
+QCC_GenValue* QCC_genArrayIntLR(int len, int from, int to) {
+  return QCC_genArrayOfR(len, (QCC_genRawR) QCC_genIntAtR, &from, &to, sizeof(int), QCC_showArrayInt, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayIntL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genIntAt, sizeof(int), QCC_showArrayInt, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayInt() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genIntAt, sizeof(int), QCC_showArrayInt, QCC_freeSimpleValue);
+}
+
+static char* QCC_showArrayDouble(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(double), QCC_showDouble, n);
+}
+
+QCC_GenValue* QCC_genArrayDoubleLR(int len, double from, double to) {
+  return QCC_genArrayOfR(len, (QCC_genRawR) QCC_genDoubleAtR, &from, &to, sizeof(double), QCC_showArrayDouble, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayDoubleL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genDoubleAt, sizeof(double), QCC_showArrayDouble, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayDouble() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genDoubleAt, sizeof(double), QCC_showArrayDouble, QCC_freeSimpleValue);
+}
+
+static char* QCC_showArrayFloat(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(float), QCC_showFloat, n);
+}
+
+QCC_GenValue* QCC_genArrayFloatLR(int len, float from, float to) {
+  return QCC_genArrayOfR(len, (QCC_genRawR) QCC_genFloatAtR, &from, &to, sizeof(float), QCC_showArrayFloat, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayFloatL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genFloatAt, sizeof(float), QCC_showArrayFloat, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayFloat() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genFloatAt, sizeof(float), QCC_showArrayFloat, QCC_freeSimpleValue);
+}
+
+static char* QCC_showArrayBoolean(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(QCC_Boolean), QCC_showBoolean, n);
+}
+
+QCC_GenValue* QCC_genArrayBooleanL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genBooleanAt, sizeof(QCC_Boolean), QCC_showArrayBoolean, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayBoolean() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genBooleanAt, sizeof(QCC_Boolean), QCC_showArrayBoolean, QCC_freeSimpleValue);
+}
+
+static char* QCC_showArrayChar(void *value, int n) {
+  return QCC_showSimpleArray(value, sizeof(char), QCC_showChar, n);
+}
+
+QCC_GenValue* QCC_genArrayCharL(int len) {
+  return QCC_genArrayOf(len, (QCC_genRaw) QCC_genCharAt, sizeof(char), QCC_showArrayChar, QCC_freeSimpleValue);
+}
+
+QCC_GenValue* QCC_genArrayChar() {
+  return QCC_genArrayOf(50, (QCC_genRaw) QCC_genCharAt, sizeof(char), QCC_showArrayChar, QCC_freeSimpleValue);
+}
+
 
 /***********************************************************************
  *  Categorization function
@@ -203,7 +396,34 @@ void QCC_freeStamp(QCC_Stamp *stamps) {
   }
 }
 
-void QCC_label(QCC_Stamp **stamps, char *label) {
+static void QCC_insertOrdStamp(QCC_Stamp **stamps, QCC_Stamp *s) {
+  QCC_Stamp *new = malloc(sizeof(QCC_Stamp));
+  *new = (QCC_Stamp) { .label = strdup(s->label), .n=s->n, .next = NULL };
+
+  QCC_Stamp *tstamp = *stamps;
+  QCC_Stamp **pre = stamps;
+  while (tstamp) {
+    if (tstamp->n < new->n) {
+      break;
+    } else {
+      pre = &tstamp->next;
+      tstamp = tstamp->next;
+    }
+  }
+  *pre = new;
+  new->next = tstamp;
+}
+
+static QCC_Stamp* QCC_sortStamp(QCC_Stamp *stamps) {
+  QCC_Stamp *sortedStamps = NULL;
+  QCC_Stamp *tstamp;
+  for (tstamp=stamps; tstamp!=NULL; tstamp=tstamp->next) {
+    QCC_insertOrdStamp(&sortedStamps, tstamp);
+  }
+  return sortedStamps;
+}
+
+static void QCC_labelN(QCC_Stamp **stamps, char *label, int n) {
   QCC_Stamp *ptr = *stamps;
   QCC_Stamp *pre = NULL;
   QCC_Stamp *new;
@@ -224,6 +444,15 @@ void QCC_label(QCC_Stamp **stamps, char *label) {
   else *stamps = new;
 }
 
+void QCC_label(QCC_Stamp **stamps, char *label) {
+  return QCC_labelN(stamps, label, 1);
+}
+
+static void QCC_mergeLabels(QCC_Stamp **dst, QCC_Stamp *src) {
+  for (; src != NULL; src=src->next)
+    QCC_labelN(dst, src->label, src->n);
+}
+
 /***********************************************************************
  *  Testing functions
  ***********************************************************************/
@@ -234,6 +463,11 @@ void QCC_freeGenValues(QCC_GenValue **arguments, int argumentsN) {
     free(arguments[i]);
   }
   if (arguments) free(arguments);
+}
+
+void QCC_freeResult(QCC_Result *res) {
+  QCC_freeStamp(res->stamps);
+  QCC_freeGenValues(res->arguments, res->argumentsN);
 }
 
 QCC_Result QCC_vforAll(QCC_property prop, int genNum, va_list genP) { //QCC_gen *genLst,
@@ -266,14 +500,30 @@ QCC_Result QCC_forAll(QCC_property prop, int genNum, ...) { //QCC_gen *genLst,
   return res;
 }
 
-void QCC_testForAll(int num, int maxFail, QCC_property prop, int genNum, ...) {
+static void QCC_printStamps(QCC_Stamp *stamps, int n) {
+  QCC_Stamp *sortedStamps = QCC_sortStamp(stamps);
+  QCC_Stamp *tstamps;
+  for (tstamps=sortedStamps; tstamps != NULL; tstamps=tstamps->next)
+    printf("%.2f%%\t%s\n", (tstamps->n/(float)n)*100, tstamps->label);
+  if (sortedStamps) QCC_freeStamp(sortedStamps);
+}
+
+static void QCC_printArguments(QCC_GenValue **arguments, int argumentsN) {
+  int i;
+  for (i=0; i<argumentsN; i++) {
+    char *s = arguments[i]->show(arguments[i]->value, arguments[i]->n);
+    printf("%s\n", s);
+    free(s);
+  }
+}
+
+int QCC_testForAll(int num, int maxFail, QCC_property prop, int genNum, ...) {
   va_list genP;
   int succ = 0;
   int fail = 0;
 
   QCC_Result res = { .status=QCC_OK };
   QCC_Stamp *stamps = NULL;
-  QCC_Stamp *tstamps;
   while (succ < num && fail < maxFail) {
     va_start(genP, genNum);
     res = QCC_vforAll(prop, genNum, genP);
@@ -284,32 +534,27 @@ void QCC_testForAll(int num, int maxFail, QCC_property prop, int genNum, ...) {
     } else {
       if (res.status == QCC_OK) {
         succ++;
-        for (tstamps=res.stamps; tstamps != NULL; tstamps=tstamps->next)
-          QCC_label(&stamps, tstamps->label);
+        QCC_mergeLabels(&stamps, res.stamps);
       } else fail++;
-
-      QCC_freeStamp(res.stamps);
-      QCC_freeGenValues(res.arguments, res.argumentsN);
+      QCC_freeResult(&res);
     }
   }
 
   if (succ == num) {
     printf("%d test passed (%d)!\n", succ, fail);
-    for (tstamps=stamps; tstamps != NULL; tstamps=tstamps->next)
-      printf("%.2f%%\t%s\n", (tstamps->n/(float)succ)*100, tstamps->label);
+    QCC_printStamps(stamps, succ);
     if (stamps) QCC_freeStamp(stamps);
+    return 0;
   } else if (res.status == QCC_FAIL) {
-    int i;
     printf("Falsifiable after %d test\n", succ+1);
-    for (i=0; i<res.argumentsN; i++) {
-      printf("%s\n", res.arguments[i]->show(res.arguments[i]->value));
-    }
-    QCC_freeStamp(res.stamps);
-    QCC_freeGenValues(res.arguments, res.argumentsN);
+    QCC_printArguments(res.arguments, res.argumentsN);
+    QCC_freeResult(&res);
+    if (stamps) QCC_freeStamp(stamps);
+    return 1;
   } else if (fail >= maxFail) {
     printf("Gave up after %d tests!\n", succ);
-    for (tstamps=stamps; tstamps != NULL; tstamps=tstamps->next)
-      printf("%.2f%%\t%s\n", (tstamps->n/(float)succ)*100, tstamps->label);
+    QCC_printStamps(stamps, succ);
     if (stamps) QCC_freeStamp(stamps);
+    return -1;
   }
 }
