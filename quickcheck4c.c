@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 typedef void (*QCC_genRaw)(void *ptr);
 typedef void (*QCC_genRawR)(void *ptr, void *from, void *to);
@@ -389,6 +390,7 @@ QCC_TestStatus QCC_not(QCC_TestStatus propStatus) {
   case QCC_OK: return QCC_FAIL;
   case QCC_FAIL: return QCC_OK;
   case QCC_NOTHING: return QCC_NOTHING;
+  default: return QCC_FAIL;
   }
 }
 
@@ -397,6 +399,7 @@ QCC_TestStatus QCC_and(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
   case QCC_OK: return prop2Status;
   case QCC_FAIL: return QCC_FAIL;
   case QCC_NOTHING: return QCC_NOTHING;
+  default: return QCC_FAIL;
   }
 }
 
@@ -406,6 +409,7 @@ QCC_TestStatus QCC_or(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
   case QCC_FAIL:
   case QCC_NOTHING:
     return prop2Status;
+  default: return QCC_FAIL;
   }
 }
 
@@ -414,6 +418,7 @@ QCC_TestStatus QCC_xor(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
   case QCC_OK: return QCC_not(prop2Status);
   case QCC_FAIL: return prop2Status;
   case QCC_NOTHING: return QCC_NOTHING;
+  default: return QCC_FAIL;
   }
 }
 
@@ -592,4 +597,6 @@ int QCC_testForAll(int num, int maxFail, QCC_property prop, int genNum, ...) {
     if (stamps) QCC_freeStamp(stamps);
     return -1;
   }
+
+  return 0;
 }

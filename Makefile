@@ -1,7 +1,7 @@
 CC=gcc
 LD=gcc
 
-CFLAGS=-g
+CFLAGS=-g -Wall
 
 EXE=example
 

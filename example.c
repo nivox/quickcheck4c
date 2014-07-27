@@ -150,4 +150,6 @@ int main(int argc, char **argv) {
 
   printf("Testing property exclusive disjunction\n");
   QCC_testForAll(100, 1000, xdisjunction, 1, QCC_genInt);
+
+  return 0;
 }
