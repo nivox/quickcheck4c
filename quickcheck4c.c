@@ -381,6 +381,41 @@ QCC_GenValue* QCC_genArrayChar() {
   return QCC_genArrayOf(50, (QCC_genRaw) QCC_genCharAt, sizeof(char), QCC_showArrayChar, QCC_freeSimpleValue);
 }
 
+/***********************************************************************
+ *  Convenience functions
+ ***********************************************************************/
+QCC_TestStatus QCC_not(QCC_TestStatus propStatus) {
+  switch (propStatus) {
+  case QCC_OK: return QCC_FAIL;
+  case QCC_FAIL: return QCC_OK;
+  case QCC_NOTHING: return QCC_NOTHING;
+  }
+}
+
+QCC_TestStatus QCC_and(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
+  switch (prop1Status) {
+  case QCC_OK: return prop2Status;
+  case QCC_FAIL: return QCC_FAIL;
+  case QCC_NOTHING: return QCC_NOTHING;
+  }
+}
+
+QCC_TestStatus QCC_or(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
+  switch (prop1Status) {
+  case QCC_OK: return QCC_OK;
+  case QCC_FAIL:
+  case QCC_NOTHING:
+    return prop2Status;
+  }
+}
+
+QCC_TestStatus QCC_xor(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status) {
+  switch (prop1Status) {
+  case QCC_OK: return QCC_not(prop2Status);
+  case QCC_FAIL: return prop2Status;
+  case QCC_NOTHING: return QCC_NOTHING;
+  }
+}
 
 /***********************************************************************
  *  Categorization function

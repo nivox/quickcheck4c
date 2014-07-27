@@ -48,20 +48,6 @@ typedef enum { QCC_OK=1, QCC_FAIL=0, QCC_NOTHING=-1 } QCC_TestStatus;
 #define QCC_getValue(vals, idx, type) ( (type) vals[idx]->value )
 
 /**
- * Implements logic implication.
- * The implication is satisfied if both the precondition and the property are
- * satisfied.
- * In case the precondition is not satisfied the special QCC_NOTHING value is
- * returned, indicating that the current test should not be considered as a
- * success.
- *
- * @param precondition A boolean condition
- * @param property A QCC_property to evaluate iff the precondition is satisfied
- * @return QCC_TestStatus
- */
-#define QCC_imply(precondition, property) precondition ? property : QCC_NOTHING
-
-/**
  * Signature of function used to represent values in a human readable
  * fashion.
  * Calling this function allocates memory that must be freed by the caller.
@@ -117,6 +103,72 @@ typedef QCC_GenValue* (*QCC_gen)();
  * @param stamp Used to categorize test instances via QCC_label
  */
 typedef QCC_TestStatus (*QCC_property)(QCC_GenValue **vals, int len, QCC_Stamp **stamps);
+
+/**
+ * Implements logic implication.
+ * The implication is satisfied if both the precondition and the property are
+ * satisfied.
+ * In case the precondition is not satisfied the special QCC_NOTHING value is
+ * returned, indicating that the current test should not be considered as a
+ * success.
+ *
+ * @param precondition A boolean condition
+ * @param property A QCC_property to evaluate iff the precondition is satisfied
+ * @return QCC_TestStatus
+ */
+#define QCC_imply(precondition, property) precondition ? property : QCC_NOTHING
+
+/**
+ * Convenience function to express property conjunction.
+ * The function returns:
+ *  - QCC_OK iff prop1Status == prop2Status == QCC_OK
+ *  - QCC_FAIL iff prop1Status == QCC_FAIL || prop2Status == QCC_FAIL
+ *  - QCC_NOTHING iff prop1Status != QCC_FAIL && prop2Status != QCC_FAIL &&
+ *                    (prop1Status ==  QCC_NOTHING || prop2Status == QCC_NOTHING)
+ *
+ * @param prop1Status The evaluation status of property 1
+ * @param prop2Status The evaluation status of property 2
+ * @return The evaluation status of the conjunction of property 1 and property 2
+ */
+QCC_TestStatus QCC_and(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status);
+
+/**
+ * Convenience function to express property disjunction.
+ * The function returns:
+ *  - QCC_OK iff prop1Status == QCC_OK || prop2Status == QCC_OK
+ *  - QCC_FAIL iff prop1Status == QCC_FAIL && prop2Status == QCC_FAIL
+ *  - QCC_NOTHING iff prop1Status != QCC_OK && prop2Status != QCC_OK &&
+ *                    (prop1Status == QCC_NOTHING || prop2Status == QCC_NOTHING)
+ *
+ * @param prop1Status The evaluation status of property 1
+ * @param prop2Status The evaluation status of property 2
+ * @return The evaluation status of the disjunction of property 1 and property 2
+ */
+QCC_TestStatus QCC_or(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status);
+
+/**
+ * Convenience function to express property exclusive disjunction.
+ * The function returns:
+ *  - QCC_OK iff (prop1Status == QCC_OK && prop2Status == QCC_FAIL) ||
+ *               (prop1Status == QCC_FAIL && prop2Status == QCC_OK)
+ *  - QCC_FAIL iff prop1Status == prop2Status != QCC_NOTHING
+ *  - QCC_NOTHING iff prop1Status == QCC_NOTHING || prop2Status = QCC_NOTHING
+ *
+ * @param prop1Status The evaluation status of property 1
+ * @param prop2Status The evaluation status of property 2
+ * @return The evaluation status of the exclusive disjunction of property 1 and
+ *         property 2
+ */
+QCC_TestStatus QCC_xor(QCC_TestStatus prop1Status, QCC_TestStatus prop2Status);
+
+/**
+ * Convenience function to express property negation.
+ * The function returns:
+ *  - QCC_OK iff propStatus == QCC_FAIL
+ *  - QCC_FAIL iff propStatus == QCC_OK
+ *  - QCC_NOTHING iff propStatus == QCC_NOTHING
+ */
+QCC_TestStatus QCC_not(QCC_TestStatus propStatus);
 
 /**
  * Initialize the random generator using a specific seed.

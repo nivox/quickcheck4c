@@ -93,6 +93,31 @@ QCC_TestStatus rangedIntGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   return a >= -5 && a <= 5;
 }
 
+QCC_TestStatus conjunction(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  int a = *QCC_getValue(vals, 0, int*);
+  int b = *QCC_getValue(vals, 1, int*);
+
+  return QCC_and(QCC_imply(a % 2 == 0, (a * a) % 2 == 0),
+                 QCC_imply(b % 2 != 0, (b * b) % 2 != 0));
+}
+
+QCC_TestStatus disjunction(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  int a = *QCC_getValue(vals, 0, int*);
+  int b = *QCC_getValue(vals, 1, int*);
+
+  return QCC_or(QCC_imply(a % 2 == b % 2, (a + b) % 2 == 0),
+                QCC_imply(b % 2 != b % 2, (a + b) % 2 != 0));
+}
+
+QCC_TestStatus xdisjunction(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  int a = *QCC_getValue(vals, 0, int*);
+
+  return  QCC_xor(QCC_imply(a > 0, a % 2 == 0),
+                  QCC_imply(a > 0, a % 2 != 0));
+}
+
+
+
 int main(int argc, char **argv) {
   QCC_init(0);
 
@@ -116,4 +141,13 @@ int main(int argc, char **argv) {
 
   printf("Testing ranged int generator\n");
   QCC_testForAll(100, 1000, rangedIntGen, 1, myRangedGenInt10);
+
+  printf("Testing property conjunction\n");
+  QCC_testForAll(100, 1000, conjunction, 2, QCC_genInt, QCC_genInt);
+
+  printf("Testing property disjunction\n");
+  QCC_testForAll(100, 1000, disjunction, 2, QCC_genInt, QCC_genInt);
+
+  printf("Testing property exclusive disjunction\n");
+  QCC_testForAll(100, 1000, xdisjunction, 1, QCC_genInt);
 }
