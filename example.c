@@ -98,11 +98,25 @@ QCC_TestStatus rangedIntGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
 }
 
 QCC_TestStatus specificLengthGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
-  char *str = *QCC_getValue(vals, 0, char **);
+  char* str = QCC_getValue(vals, 0, char *);
 
-  QCC_label(stamp, str);
+  char *s = (char *) calloc(3, sizeof(char));
+  snprintf(s, 3*sizeof(char), "%d", (int) strlen(str));
+  QCC_label(stamp, s);
 
-  return strlen(str) == 10;
+  return strlen(str) < 10;
+}
+
+QCC_TestStatus charGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  char str = *QCC_getValue(vals, 0, char *);
+
+  char *s = (char *) calloc(2, sizeof(char));
+  s[0] = str;
+  s[1] = '\0';
+  QCC_label(stamp, s);
+  free(s);
+
+  return 1;
 }
 
 QCC_TestStatus conjunction(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
@@ -153,6 +167,9 @@ int main(int argc, char **argv) {
 
   printf("Testing ranged int generator\n");
   QCC_testForAll(100, 1000, rangedIntGen, 1, myRangedGenInt10);
+
+  printf("Testing char generation\n");
+  QCC_testForAll(100, 1000, charGen, 1, QCC_genChar);
 
   printf("Testing specific-length string generator\n");
   QCC_testForAll(100, 1000, specificLengthGen, 1, mySpecificLengthGenString10);
