@@ -8,11 +8,15 @@
 #include "quickcheck4c.h"
 
 #include <stdio.h>
+#include <string.h>
 
 QCC_GenValue* myRangedGenInt10() {
   return QCC_genIntR(-5, 5);
 }
 
+QCC_GenValue* mySpecificLengthGenString10() {
+  return QCC_genStringL(10);
+}
 
 QCC_TestStatus mulIntCommutativity(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   int a = *QCC_getValue(vals, 0, int*);
@@ -93,6 +97,28 @@ QCC_TestStatus rangedIntGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   return a >= -5 && a <= 5;
 }
 
+QCC_TestStatus specificLengthGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  char* str = QCC_getValue(vals, 0, char *);
+
+  char *s = (char *) calloc(3, sizeof(char));
+  snprintf(s, 3*sizeof(char), "%d", (int) strlen(str));
+  QCC_label(stamp, s);
+
+  return strlen(str) < 10;
+}
+
+QCC_TestStatus charGen(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
+  char str = *QCC_getValue(vals, 0, char *);
+
+  char *s = (char *) calloc(2, sizeof(char));
+  s[0] = str;
+  s[1] = '\0';
+  QCC_label(stamp, s);
+  free(s);
+
+  return 1;
+}
+
 QCC_TestStatus conjunction(QCC_GenValue **vals, int len, QCC_Stamp **stamp) {
   int a = *QCC_getValue(vals, 0, int*);
   int b = *QCC_getValue(vals, 1, int*);
@@ -141,6 +167,12 @@ int main(int argc, char **argv) {
 
   printf("Testing ranged int generator\n");
   QCC_testForAll(100, 1000, rangedIntGen, 1, myRangedGenInt10);
+
+  printf("Testing char generation\n");
+  QCC_testForAll(100, 1000, charGen, 1, QCC_genChar);
+
+  printf("Testing specific-length string generator\n");
+  QCC_testForAll(100, 1000, specificLengthGen, 1, mySpecificLengthGenString10);
 
   printf("Testing property conjunction\n");
   QCC_testForAll(100, 1000, conjunction, 2, QCC_genInt, QCC_genInt);

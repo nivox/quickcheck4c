@@ -138,7 +138,7 @@ QCC_GenValue* QCC_genIntR(int from, int to) {
   return QCC_initGenValue(v, 1, QCC_showInt, QCC_freeSimpleValue);
 }
 
-QCC_GenValue* QCC_genInt(int from, int to) {
+QCC_GenValue* QCC_genInt() {
   return QCC_genIntR(QCC_INT_FROM, QCC_INT_TO);
 }
 
